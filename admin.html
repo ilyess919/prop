@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+   <meta charset="utf-8">
+   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+   <title>Tableau de Bord Admin | PROPATISS — Gestion des Articles</title>
+   <meta name="description" content="Espace d'administration PROPATISS pour ajouter, modifier et supprimer des articles du catalogue.">
+   <!-- Protéger la page admin contre l'indexation -->
+   <meta name="robots" content="noindex, nofollow">
+
+   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧁</text></svg>">
+
+   <!-- Bootstrap CSS -->
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+
+   <!-- Font Awesome -->
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+   <!-- Google Fonts -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+   <!-- Admin Stylesheet -->
+   <link rel="stylesheet" href="css/admin.css">
+
+   <!-- ================================================================
+        GARDE D'AUTHENTIFICATION
+        Overlay opaque couvre tout le contenu jusquà validation Firebase.
+   ================================================================ -->
+   <style>
+      #authGuardOverlay {
+         position: fixed;
+         inset: 0;
+         background: #FFF4E6;
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         justify-content: center;
+         z-index: 99999;
+         gap: 14px;
+         font-family: 'Poppins', sans-serif;
+         transition: opacity 0.35s ease;
+      }
+      #authGuardOverlay.fadeout { opacity: 0; pointer-events: none; }
+      #authGuardOverlay .guard-spinner {
+         width: 48px; height: 48px;
+         border: 4px solid rgba(90,56,37,0.18);
+         border-top-color: #5A3825;
+         border-radius: 50%;
+         animation: guard-spin 0.8s linear infinite;
+      }
+      #authGuardOverlay .guard-text  { color:#8a6478; font-size:0.87rem; }
+      #authGuardOverlay .guard-error {
+         display:none; text-align:center; padding:0 30px;
+         color:#c53045; font-size:0.83rem; line-height:1.5;
+      }
+      #authGuardOverlay .guard-error a {
+         display:inline-block; margin-top:12px;
+         background:linear-gradient(120deg,#ff9ac1,#ec4c8a,#d6336c);
+         color:#fff; font-weight:700; font-size:0.9rem;
+         padding:10px 28px; border-radius:50px; text-decoration:none;
+         box-shadow:0 4px 16px rgba(236,76,138,0.25);
+      }
+      @keyframes guard-spin { to { transform:rotate(360deg); } }
+   </style>
+</head>
+<body class="admin-body">
+
+   <!-- ================================================================
+        GARDE D'AUTHENTIFICATION
+        Cet overlay couvre toute la page jusqu'à ce que Firebase confirme
+        que l'utilisateur est bien un administrateur connecté.
+        Si non connecté → redirection immédiate vers login.html.
+   ================================================================ -->
+   <div id="authGuardOverlay">
+      <div class="guard-spinner" id="guardSpinner"></div>
+      <div class="guard-text" id="guardText">Vérification de l'accès…</div>
+      <div class="guard-error" id="guardError">
+         Impossible de joindre Firebase.<br>
+         Vérifiez votre connexion internet ou connectez-vous manuellement.
+         <br><a href="login.html">🔐 Aller à la page de connexion</a>
+      </div>
+   </div>
+
+   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+   <script src="js/firebase-config.js"></script>
+   <script>
+      (function () {
+         'use strict';
+
+         var spinner   = document.getElementById('guardSpinner');
+         var guardText = document.getElementById('guardText');
+         var guardErr  = document.getElementById('guardError');
+         var overlay   = document.getElementById('authGuardOverlay');
+
+         /* Affiche le message d'erreur avec lien vers login.html */
+         function showError() {
+            if (spinner)   spinner.style.display  = 'none';
+            if (guardText) guardText.style.display = 'none';
+            if (guardErr)  guardErr.style.display  = 'block';
+         }
+
+         /* Fait disparaître l'overlay (utilisateur connecté) */
+         function revealPage() {
+            if (overlay) {
+               overlay.classList.add('fadeout');
+               setTimeout(function () {
+                  if (overlay.parentNode) overlay.remove();
+               }, 400);
+            }
+         }
+
+         /* Timeout de sécurité : 6s max avant d'afficher l'erreur */
+         var authTimeout = setTimeout(showError, 6000);
+
+         /* Vérification Firebase avec gestion d'erreur */
+         try {
+            firebase.auth().onAuthStateChanged(function (user) {
+               clearTimeout(authTimeout);
+               if (user) {
+                  revealPage();
+               } else {
+                  window.location.replace('login.html');
+               }
+            });
+         } catch (e) {
+            clearTimeout(authTimeout);
+            showError();
+         }
+
+      })();
+   </script>
+   <!-- ================================================================ -->
+
+
+   <!-- ---- Barre supérieure (Top Bar) ---- -->
+   <div class="pp-topbar">
+      <div class="container-fluid px-lg-5">
+         <div class="row align-items-center">
+            <div class="col-md-7">
+               <span class="pp-topbar-item">
+                  <i class="fa fa-shield text-warning"></i>
+                  <strong>Espace Administration PROPATISS</strong>
+                  <span class="d-none d-sm-inline">— Accès Gérant</span>
+               </span>
+               <span class="pp-topbar-item d-none d-md-inline-flex">
+                  <i class="fa fa-map-marker"></i> Sakiet Ezzit, Sfax
+               </span>
+            </div>
+            <div class="col-md-5 text-md-right text-left mt-2 mt-md-0">
+               <span class="pp-topbar-item">
+                  <i class="fa fa-clock-o"></i>
+                  <span id="adminLiveClock">—</span>
+               </span>
+               <a href="product.html" target="_blank" rel="noopener"
+                  class="badge badge-warning py-1 px-2 ml-2"
+                  style="background:#ec4c8a; color:#ffffff; text-decoration:none;">
+                  <i class="fa fa-external-link"></i> Voir la boutique
+               </a>
+            </div>
+         </div>
+      </div>
+   </div>
+
+
+   <!-- ---- Navigation Header ---- -->
+   <header class="admin-navbar">
+      <div class="container-fluid px-lg-5">
+         <div class="d-flex justify-content-between align-items-center flex-wrap">
+
+            <div class="d-flex align-items-center">
+               <a href="admin.html" class="admin-brand">
+                  <img src="images/propatiss-header.png" alt="PROPATISS Admin">
+                  <span class="admin-badge-role">ADMIN</span>
+               </a>
+            </div>
+
+            <nav class="admin-nav-actions my-2 my-md-0" aria-label="Navigation admin">
+               <a href="product.html" class="btn-admin-outline" title="Accéder au catalogue public" target="_blank" rel="noopener">
+                  <i class="fa fa-shopping-bag"></i>
+                  <span class="d-none d-sm-inline">Catalogue Client</span>
+               </a>
+               <a href="index.html" class="btn-admin-outline" title="Retour à l'accueil">
+                  <i class="fa fa-home"></i>
+                  <span class="d-none d-sm-inline">Accueil</span>
+               </a>
+               <button type="button" class="btn-admin-cta" id="btnOpenAddModal">
+                  <i class="fa fa-plus-circle"></i> Ajouter un Article
+               </button>
+               <button type="button" class="btn-admin-outline" id="btnLogout" title="Se déconnecter">
+                  <i class="fa fa-sign-out"></i>
+                  <span class="d-none d-sm-inline">Déconnexion</span>
+               </button>
+            </nav>
+
+         </div>
+      </div>
+   </header>
+
+
+   <!-- ================================================================
+        CONTENU PRINCIPAL
+   ================================================================ -->
+   <main class="container-fluid px-lg-5 py-4">
+
+      <!-- En-tête de page -->
+      <div class="row align-items-center mb-4">
+         <div class="col-lg-8">
+            <h1 class="admin-page-title" style="font-family:'Playfair Display',serif; font-size:32px; margin-bottom:6px;">
+               Gestion des <span class="admin-page-accent">Articles &amp; Produits</span>
+            </h1>
+            <p class="admin-page-description" style="margin:0; font-size:15px;">
+               Ajoutez de nouveaux matériels, mettez à jour les prix ou supprimez des articles en temps réel.
+            </p>
+         </div>
+         <div class="col-lg-4 text-lg-right mt-3 mt-lg-0">
+            <div class="btn-group admin-data-actions" role="group" aria-label="Actions catalogue">
+               <button type="button" class="btn btn-sm btn-outline-warning" id="btnExportCatalog" title="Télécharger une sauvegarde du catalogue en JSON">
+                  <i class="fa fa-download mr-1"></i> Sauvegarder
+               </button>
+               <button type="button" class="btn btn-sm btn-outline-warning" id="btnImportCatalog" title="Restaurer ou importer un catalogue JSON">
+                  <i class="fa fa-upload mr-1"></i> Importer
+               </button>
+               <button type="button" class="btn btn-sm btn-outline-danger" id="btnResetCatalog" title="Restaurer les articles initiaux PROPATISS">
+                  <i class="fa fa-refresh mr-1"></i> Réinitialiser
+               </button>
+            </div>
+         </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="row admin-metrics-row">
+
+         <div class="col-xl-3 col-sm-6 mb-3 mb-xl-0">
+            <div class="metric-card">
+               <div class="metric-header">
+                  <span class="metric-title">Total Articles</span>
+                  <div class="metric-icon"><i class="fa fa-cubes"></i></div>
+               </div>
+               <div class="metric-value" id="metricTotalArticles">0</div>
+               <p class="metric-desc">Articles actifs dans le catalogue</p>
+            </div>
+         </div>
+
+         <div class="col-xl-3 col-sm-6 mb-3 mb-xl-0">
+            <div class="metric-card success">
+               <div class="metric-header">
+                  <span class="metric-title">En Promotion</span>
+                  <div class="metric-icon"><i class="fa fa-percent"></i></div>
+               </div>
+               <div class="metric-value" id="metricPromoArticles">0</div>
+               <p class="metric-desc">Articles avec prix réduit barré</p>
+            </div>
+         </div>
+
+         <div class="col-xl-3 col-sm-6 mb-3 mb-xl-0">
+            <div class="metric-card info">
+               <div class="metric-header">
+                  <span class="metric-title">Catégories</span>
+                  <div class="metric-icon"><i class="fa fa-th-large"></i></div>
+               </div>
+               <div class="metric-value" id="metricCategories">0</div>
+               <p class="metric-desc">Rayons gérés en magasin</p>
+            </div>
+         </div>
+
+         <div class="col-xl-3 col-sm-6 mb-3 mb-xl-0">
+            <div class="metric-card danger">
+               <div class="metric-header">
+                  <span class="metric-title">Rupture de Stock</span>
+                  <div class="metric-icon"><i class="fa fa-exclamation-triangle"></i></div>
+               </div>
+               <div class="metric-value" id="metricOutOfStock">0</div>
+               <p class="metric-desc">Articles indisponibles</p>
+            </div>
+         </div>
+
+      </div>
+
+      <!-- Barre de contrôles & filtres -->
+      <div class="admin-controls-card">
+         <div class="row align-items-center">
+
+            <div class="col-lg-4 col-md-6 mb-3 mb-lg-0">
+               <div class="admin-search-wrapper">
+                  <i class="fa fa-search"></i>
+                  <input
+                     type="text"
+                     id="adminSearchInput"
+                     class="admin-search-input"
+                     placeholder="Rechercher par titre, référence, mot-clé…"
+                     autocomplete="off"
+                     aria-label="Rechercher un article"
+                  >
+               </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+               <select id="adminCategoryFilter" class="admin-select w-100" aria-label="Filtrer par catégorie">
+                  <option value="all">📂 Toutes les Catégories</option>
+                  <option value="silicone">Moules Silicone</option>
+                  <option value="cakedesign">Pâte à Sucre &amp; Cake Design</option>
+                  <option value="chocolat">Chocolaterie</option>
+                  <option value="boulangerie">Boulangerie &amp; Cuisson</option>
+                  <option value="combos">Packs Éco &amp; Promos</option>
+               </select>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+               <select id="adminSortSelect" class="admin-select w-100" aria-label="Trier les articles">
+                  <option value="newest">🕒 Plus Récents d'abord</option>
+                  <option value="price-asc">💵 Prix : Croissant</option>
+                  <option value="price-desc">💎 Prix : Décroissant</option>
+                  <option value="name-asc">🔤 Nom : A → Z</option>
+                  <option value="name-desc">🔤 Nom : Z → A</option>
+               </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6 d-flex align-items-center justify-content-lg-end justify-content-between">
+               <span class="badge badge-secondary py-2 px-3 mr-2" id="articlesCountBadge">
+                  0 articles
+               </span>
+               <div class="btn-group" role="group" aria-label="Mode d'affichage">
+                  <button type="button" class="btn btn-view-toggle active" data-view="table" title="Vue Tableau">
+                     <i class="fa fa-list"></i>
+                  </button>
+                  <button type="button" class="btn btn-view-toggle" data-view="grid" title="Vue Grille">
+                     <i class="fa fa-th"></i>
+                  </button>
+               </div>
+            </div>
+
+         </div>
+      </div>
+
+      <!-- Vue Tableau -->
+      <div id="adminTableView" class="admin-table-container">
+         <div class="table-responsive">
+            <table class="admin-table" aria-label="Liste des articles">
+               <thead>
+                  <tr>
+                     <th scope="col">Photo</th>
+                     <th scope="col">Article &amp; Réf</th>
+                     <th scope="col">Catégorie</th>
+                     <th scope="col">Prix (DT)</th>
+                     <th scope="col">Badge</th>
+                     <th scope="col">Disponibilité</th>
+                     <th scope="col" class="text-right">Actions</th>
+                  </tr>
+               </thead>
+               <tbody id="articlesTableBody">
+                  <!-- Rempli dynamiquement par js/admin.js -->
+               </tbody>
+            </table>
+         </div>
+      </div>
+
+      <!-- Vue Grille -->
+      <div id="adminGridView" class="row" style="display:none;">
+         <div id="articlesGridContainer" class="row w-100 m-0">
+            <!-- Rempli dynamiquement par js/admin.js -->
+         </div>
+      </div>
+
+   </main>
+
+
+   <!-- ================================================================
+        MODALS
+   ================================================================ -->
+
+   <!-- Modal : Ajouter / Modifier un Article -->
+   <div class="modal fade modal-admin" id="articleModal" tabindex="-1" role="dialog"
+      aria-labelledby="articleModalTitle" aria-hidden="true" data-backdrop="static">
+      <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+         <div class="modal-content">
+
+            <div class="modal-header">
+               <h5 class="modal-title" id="articleModalTitle">
+                  <i class="fa fa-plus-circle text-warning mr-2"></i> Ajouter un Nouvel Article
+               </h5>
+               <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+                  <span aria-hidden="true">&times;</span>
+               </button>
+            </div>
+
+            <form id="articleForm" novalidate>
+               <div class="modal-body">
+                  <input type="hidden" id="articleIdHidden" value="">
+
+                  <div class="row">
+                     <!-- Colonne gauche : champs du formulaire -->
+                     <div class="col-lg-7">
+
+                        <div class="form-group mb-3">
+                           <label class="form-label-gold" for="modalTitle">
+                              Titre de l'Article <span class="text-danger">*</span>
+                           </label>
+                           <input type="text" id="modalTitle" class="form-control-admin"
+                              placeholder="Ex : Moule Silicone Entremets Dôme & Nuage"
+                              required autocomplete="off">
+                        </div>
+
+                        <div class="row">
+                           <div class="col-md-6 form-group mb-3">
+                              <label class="form-label-gold" for="modalCategory">
+                                 Catégorie <span class="text-danger">*</span>
+                              </label>
+                              <select id="modalCategory" class="form-control-admin">
+                                 <option value="silicone">Moules Silicone</option>
+                                 <option value="cakedesign">Pâte à Sucre &amp; Cake Design</option>
+                                 <option value="chocolat">Chocolaterie</option>
+                                 <option value="boulangerie">Boulangerie &amp; Cuisson</option>
+                                 <option value="combos">Packs Éco &amp; Promos</option>
+                              </select>
+                           </div>
+                           <div class="col-md-3 form-group mb-3">
+                              <label class="form-label-gold" for="modalPrice">
+                                 Prix Actuel (DT) <span class="text-danger">*</span>
+                              </label>
+                              <input type="number" id="modalPrice" class="form-control-admin"
+                                 placeholder="Ex : 18" step="0.5" min="0" required>
+                           </div>
+                           <div class="col-md-3 form-group mb-3">
+                              <label class="form-label-gold" for="modalOldPrice">Prix Barré (Promo)</label>
+                              <input type="number" id="modalOldPrice" class="form-control-admin"
+                                 placeholder="Ex : 22" step="0.5" min="0">
+                           </div>
+                        </div>
+
+                        <div class="row">
+                           <div class="col-md-7 form-group mb-3">
+                              <label class="form-label-gold" for="modalBadge">Étiquette / Badge Publicitaire</label>
+                              <input type="text" id="modalBadge" class="form-control-admin"
+                                 placeholder="Ex : NOUVEAU, PACK PROMO, TOP VENTE…">
+                           </div>
+                           <div class="col-md-5 form-group mb-3">
+                              <label class="form-label-gold" for="modalBadgeColor">Couleur du Badge</label>
+                              <select id="modalBadgeColor" class="form-control-admin">
+                                 <option value="#c99b4a">Or Signature</option>
+                                 <option value="#2b6cb0">Bleu Roi</option>
+                                 <option value="#b7791f">Ambre Promo</option>
+                                 <option value="#702459">Prune Chocolat</option>
+                                 <option value="#c53030">Rouge Choc</option>
+                                 <option value="#2f855a">Vert Émeraude</option>
+                              </select>
+                           </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                           <label class="form-label-gold">Image de l'Article</label>
+                           <input type="text" id="modalImage" class="form-control-admin mb-2"
+                              placeholder="URL de l'image (ou utilisez le bouton ci-dessous)"
+                              autocomplete="off">
+                           <div class="d-flex align-items-center mb-2">
+                              <label class="btn btn-sm btn-outline-warning m-0 mr-2 py-1 px-3" style="cursor:pointer;">
+                                 <i class="fa fa-folder-open-o mr-1"></i> Choisir sur mon ordinateur
+                                 <input type="file" id="modalImageFile" accept="image/*" style="display:none;">
+                              </label>
+                              <small class="text-muted">JPG, PNG, WebP (max 2 Mo)</small>
+                           </div>
+                           <span style="font-size:12px; color:#b5a498;">Ou choisissez une image de la bibliothèque :</span>
+                           <div class="preset-img-grid" id="presetImagesContainer"></div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                           <label class="form-label-gold" for="modalDescription">Description Complète</label>
+                           <textarea id="modalDescription" rows="3" class="form-control-admin"
+                              placeholder="Détails du matériel, dimensions, matériau silicone platinium, utilisations conseillées…"></textarea>
+                        </div>
+
+                        <div class="d-flex align-items-center py-2" style="border-top:1px solid rgba(201,155,74,0.2);">
+                           <div class="custom-control custom-switch mr-4">
+                              <input type="checkbox" class="custom-control-input" id="modalInStock" checked>
+                              <label class="custom-control-label text-light font-weight-bold" for="modalInStock" style="cursor:pointer;">
+                                 Article disponible en stock
+                              </label>
+                           </div>
+                           <div class="custom-control custom-checkbox">
+                              <input type="checkbox" class="custom-control-input" id="modalFeatured">
+                              <label class="custom-control-label text-warning font-weight-bold" for="modalFeatured" style="cursor:pointer;">
+                                 Mettre en vedette (Accueil)
+                              </label>
+                           </div>
+                        </div>
+
+                     </div>
+
+                     <!-- Colonne droite : aperçu en temps réel -->
+                     <div class="col-lg-5">
+                        <div class="preview-card-wrapper">
+                           <span class="preview-title-tag">
+                              <i class="fa fa-eye mr-1"></i> Aperçu Client en Temps Réel
+                           </span>
+                           <div class="pp-prod-card h-100 text-left p-4"
+                              style="background:#1e1511; border:2px solid #c99b4a; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                              <span id="previewCardBadge" class="badge mb-2 px-3 py-1 font-weight-bold"
+                                 style="background:#c99b4a; color:#fff; font-size:11px; display:inline-block;">
+                                 MOULE SILICONE
+                              </span>
+                              <img id="previewCardImg" src="images/moule_silicone.jpg" alt="Aperçu article"
+                                 style="height:190px; width:100%; object-fit:cover; border-radius:10px; margin-bottom:12px;">
+                              <h4 id="previewCardTitle"
+                                 style="color:#fff; font-family:'Playfair Display',serif; font-size:19px; margin-bottom:4px;">
+                                 Titre de l'article
+                              </h4>
+                              <span id="previewCardCategory" class="badge badge-dark mb-2"
+                                 style="background:rgba(201,155,74,0.15); color:#edd29b; font-size:11px;">
+                                 Moules Silicone
+                              </span>
+                              <p id="previewCardDesc"
+                                 style="color:#bdaea3; font-size:13px; line-height:1.4; margin-bottom:15px;">
+                                 Description de l'article visible par le client…
+                              </p>
+                              <div class="d-flex justify-content-between align-items-center pt-2"
+                                 style="border-top:1px dashed rgba(201,155,74,0.3);">
+                                 <div>
+                                    <span id="previewCardOldPrice"
+                                       style="text-decoration:line-through; color:#8c7d73; font-size:13px; margin-right:5px; display:none;">
+                                       0 DT
+                                    </span>
+                                    <strong id="previewCardPrice" style="color:#edd29b; font-size:22px;">0 DT</strong>
+                                 </div>
+                                 <button type="button" class="btn btn-sm btn-success rounded-pill px-3"
+                                    style="background:#25D366; border:none; pointer-events:none;">
+                                    <i class="fa fa-whatsapp"></i> Commander
+                                 </button>
+                              </div>
+                           </div>
+                           <small class="text-muted d-block text-center mt-3" style="font-size:11px;">
+                              <i class="fa fa-info-circle"></i>
+                              Le bouton WhatsApp pré-remplit automatiquement le message avec le titre et le prix.
+                           </small>
+                        </div>
+                     </div>
+
+                  </div>
+               </div>
+
+               <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary px-4" data-dismiss="modal">Annuler</button>
+                  <button type="submit" class="btn-admin-cta px-4" id="btnSaveArticle">
+                     <i class="fa fa-check mr-2"></i> Enregistrer l'article
+                  </button>
+               </div>
+            </form>
+
+         </div>
+      </div>
+   </div>
+
+
+   <!-- Modal : Confirmation de Suppression -->
+   <div class="modal fade modal-admin" id="deleteModal" tabindex="-1" role="dialog"
+      aria-labelledby="deleteModalTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+         <div class="modal-content" style="border-color:#e53e3e;">
+            <div class="modal-header" style="background:#260e0e; border-bottom:1px solid rgba(229,62,62,0.4);">
+               <h5 class="modal-title" id="deleteModalTitle" style="color:#fc8181;">
+                  <i class="fa fa-exclamation-triangle text-danger mr-2"></i> Confirmer la Suppression
+               </h5>
+               <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+                  <span aria-hidden="true">&times;</span>
+               </button>
+            </div>
+            <div class="modal-body text-center py-4">
+               <img id="deleteItemImg" src="images/moule_silicone.jpg" alt="Article à supprimer"
+                  style="width:90px; height:90px; object-fit:cover; border-radius:12px; margin-bottom:15px; border:2px solid #e53e3e;">
+               <h4 id="deleteItemTitle" style="color:#fff; font-family:'Playfair Display',serif; margin-bottom:6px;">Article</h4>
+               <p id="deleteItemPrice" style="color:#c99b4a; font-weight:bold; font-size:18px; margin-bottom:15px;">0 DT</p>
+               <div class="alert alert-danger mx-auto"
+                  style="max-width:400px; background:rgba(229,62,62,0.12); border-color:rgba(229,62,62,0.3); color:#feb2b2; font-size:13px;">
+                  <i class="fa fa-warning mr-1"></i>
+                  Êtes-vous sûr de vouloir supprimer définitivement cet article ?
+                  Il ne sera plus visible sur le catalogue en ligne.
+               </div>
+            </div>
+            <div class="modal-footer" style="background:#1a0b0b;">
+               <button type="button" class="btn btn-outline-secondary px-4" data-dismiss="modal">Annuler</button>
+               <button type="button" class="btn btn-danger px-4 font-weight-bold" id="btnConfirmDelete"
+                  style="background:#e53e3e; border-color:#e53e3e;">
+                  <i class="fa fa-trash mr-2"></i> Supprimer définitivement
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+
+
+   <!-- Modal : Aperçu Rapide Client -->
+   <div class="modal fade modal-admin" id="quickPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h5 class="modal-title">
+                  <i class="fa fa-eye text-warning mr-2"></i> Rendu sur le Site Public
+               </h5>
+               <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+                  <span aria-hidden="true">&times;</span>
+               </button>
+            </div>
+            <div class="modal-body p-4" id="quickPreviewContent">
+               <!-- Injecté dynamiquement -->
+            </div>
+            <div class="modal-footer">
+               <button type="button" class="btn btn-outline-warning px-4" data-dismiss="modal">Fermer</button>
+            </div>
+         </div>
+      </div>
+   </div>
+
+
+   <!-- Modal : Zoom Image / Lightbox -->
+   <div class="modal fade modal-admin" id="imgPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+         <div class="modal-content" style="background:transparent; border:none; box-shadow:none;">
+            <div class="modal-body text-center p-0">
+               <button type="button" class="close text-white position-absolute"
+                  style="top:10px; right:15px; z-index:10; font-size:32px;" data-dismiss="modal">
+                  &times;
+               </button>
+               <img id="imgPreviewModalSrc" src="" alt="Agrandissement"
+                  style="max-height:80vh; max-width:100%; border-radius:12px; border:2px solid #c99b4a; box-shadow:0 15px 40px rgba(0,0,0,0.9);">
+               <h5 id="imgPreviewModalTitle" class="mt-3 text-warning font-weight-bold"></h5>
+            </div>
+         </div>
+      </div>
+   </div>
+
+
+   <!-- Modal : Import Catalogue JSON -->
+   <div class="modal fade modal-admin" id="importJsonModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h5 class="modal-title">
+                  <i class="fa fa-upload text-warning mr-2"></i> Importer un Catalogue JSON
+               </h5>
+               <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+                  <span aria-hidden="true">&times;</span>
+               </button>
+            </div>
+            <div class="modal-body">
+               <div class="form-group mb-3">
+                  <label class="form-label-gold">Option 1 — Sélectionner un fichier .json</label>
+                  <input type="file" id="importFileInput" accept=".json" class="form-control-admin">
+               </div>
+               <div class="form-group mb-0">
+                  <label class="form-label-gold">Option 2 — Coller le code JSON</label>
+                  <textarea id="importJsonText" rows="6" class="form-control-admin"
+                     placeholder='[ { "title": "Article...", "price": 18, ... } ]'></textarea>
+               </div>
+            </div>
+            <div class="modal-footer">
+               <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Annuler</button>
+               <button type="button" class="btn-admin-cta" id="btnConfirmImport">
+                  <i class="fa fa-check mr-2"></i> Importer les articles
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+
+
+   <!-- Conteneur Toast Notifications -->
+   <div class="toast-container-custom" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+
+   <!-- ================================================================
+        SCRIPTS JAVASCRIPT
+   ================================================================ -->
+   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+   <!-- Store de données et logique admin -->
+   <script src="js/products-data.js"></script>
+   <script src="js/admin.js"></script>
+
+   <script>
+      (function () {
+         'use strict';
+
+         /* ---- Horloge en direct dans la topbar ---- */
+         function updateLiveClock() {
+            var now     = new Date();
+            var options = {
+               weekday : 'short',
+               day     : 'numeric',
+               month   : 'short',
+               hour    : '2-digit',
+               minute  : '2-digit',
+               second  : '2-digit'
+            };
+            var clockEl = document.getElementById('adminLiveClock');
+            if (clockEl) {
+               clockEl.textContent = now.toLocaleDateString('fr-FR', options);
+            }
+         }
+
+         setInterval(updateLiveClock, 1000);
+         updateLiveClock();
+
+         /* ---- Déconnexion ---- */
+         var logoutBtn = document.getElementById('btnLogout');
+         if (logoutBtn) {
+            logoutBtn.addEventListener('click', function () {
+               firebase.auth().signOut().then(function () {
+                  window.location.replace('login.html');
+               }).catch(function (err) {
+                  console.error('Erreur de déconnexion :', err);
+               });
+            });
+         }
+
+      })();
+   </script>
+
+</body>
+</html>

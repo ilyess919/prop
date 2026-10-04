@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+   <meta charset="utf-8">
+   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+   <title>Connexion Admin | PROPATISS</title>
+   <!-- Empêche l'indexation par les moteurs de recherche -->
+   <meta name="robots" content="noindex, nofollow">
+
+   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧁</text></svg>">
+
+   <!-- Google Fonts -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+   <style>
+      :root {
+         --pp-dark:       #fff5f9;
+         --pp-dark2:      #ffffff;
+         --pp-gold:       #FFF4E6;
+         --pp-gold-light: #5A3825;
+         --pp-gold-dim:   rgba(90,56,37,0.24);
+         --pp-text:       #3d1f2e;
+         --pp-muted:      #8a6478;
+         --pp-error:      #c53045;
+         --pp-success:    #25815b;
+         --pp-radius:     12px;
+         --pp-transition: all 0.3s ease;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+         min-height: 100vh;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         background:
+            repeating-linear-gradient(90deg, rgba(255,244,230,0.8) 0 110px, rgba(255,255,255,0.82) 110px 220px),
+            linear-gradient(160deg, #ffffff 0%, #fff4e6 65%, #ffffff 100%);
+         font-family: 'Poppins', sans-serif;
+         color: var(--pp-text);
+         padding: 20px;
+         overflow: hidden;
+      }
+
+      body::before {
+         content: '';
+         position: fixed;
+         inset: 0;
+         background-image: radial-gradient(circle at 1px 1px, rgba(255,244,230,0.7) 1px, transparent 0);
+         background-size: 32px 32px;
+         pointer-events: none;
+         z-index: 0;
+      }
+
+      /* ---- Auth Check Overlay ---- */
+      #authOverlay {
+         position: fixed;
+         inset: 0;
+         background: var(--pp-dark);
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         justify-content: center;
+         z-index: 9999;
+         gap: 16px;
+      }
+
+      .pp-spinner {
+         width: 44px;
+         height: 44px;
+         border: 4px solid rgba(90,56,37,0.18);
+         border-top-color: #5A3825;
+         border-radius: 50%;
+         animation: spin 0.8s linear infinite;
+      }
+
+      .overlay-text {
+         font-size: 0.85rem;
+         color: var(--pp-muted);
+         letter-spacing: 0.3px;
+      }
+
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ---- Login Card ---- */
+      .login-card {
+         position: relative;
+         z-index: 1;
+         width: 100%;
+         max-width: 400px;
+         background: rgba(255,255,255,0.96);
+         border: 1px solid var(--pp-gold-dim);
+         border-radius: 20px;
+         padding: 44px 36px;
+         box-shadow: 0 24px 70px rgba(90,56,37,0.12), 0 0 0 1px rgba(90,56,37,0.06) inset;
+         backdrop-filter: blur(20px);
+         animation: slideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      @keyframes slideUp {
+         from { opacity: 0; transform: translateY(30px); }
+         to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .login-logo {
+         text-align: center;
+         margin-bottom: 8px;
+      }
+
+      .login-logo-image {
+         display: block;
+         width: min(190px, 100%);
+         height: 104px;
+         object-fit: contain;
+         margin: 0 auto 8px;
+      }
+
+      .login-logo-icon {
+         font-size: 42px;
+         display: block;
+         margin-bottom: 8px;
+         animation: pulse 2.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+         0%, 100% { transform: scale(1); }
+         50%       { transform: scale(1.06); }
+      }
+
+      .login-brand {
+         font-family: 'Outfit', sans-serif;
+         font-weight: 800;
+         font-size: 1.6rem;
+         letter-spacing: 2px;
+         color: #5A3825;
+         background-clip: text;
+      }
+
+      .login-divider {
+         width: 50px;
+         height: 2px;
+         background: linear-gradient(90deg, transparent, #5A3825, transparent);
+         margin: 14px auto;
+         border-radius: 2px;
+      }
+
+      .login-subtitle {
+         text-align: center;
+         font-size: 0.82rem;
+         color: var(--pp-muted);
+         margin-bottom: 30px;
+      }
+
+      /* ---- Form ---- */
+      .form-group { margin-bottom: 18px; }
+
+      .form-label {
+         font-size: 0.8rem;
+         font-weight: 600;
+         color: var(--pp-gold-light);
+         margin-bottom: 7px;
+         display: block;
+      }
+
+      .form-field-wrapper { position: relative; }
+
+      .form-input {
+         width: 100%;
+         padding: 12px 42px 12px 14px;
+         background: #fff8fb;
+         border: 1px solid var(--pp-gold-dim);
+         border-radius: var(--pp-radius);
+         color: var(--pp-text);
+         font-family: 'Poppins', sans-serif;
+         font-size: 0.92rem;
+         transition: var(--pp-transition);
+         outline: none;
+      }
+
+      .form-input::placeholder { color: #b08fa0; }
+
+      .form-input:focus {
+         border-color: var(--pp-gold);
+         background: #ffffff;
+         box-shadow: 0 0 0 3px rgba(90,56,37,0.12), 0 0 15px rgba(90,56,37,0.08);
+      }
+
+      .toggle-password {
+         position: absolute;
+         right: 12px;
+         top: 50%;
+         transform: translateY(-50%);
+         background: none;
+         border: none;
+         color: var(--pp-muted);
+         cursor: pointer;
+         padding: 4px;
+         font-size: 15px;
+         line-height: 1;
+         transition: color 0.2s;
+      }
+
+      .toggle-password:hover { color: var(--pp-gold); }
+
+      /* ---- Alert box ---- */
+      .alert-box {
+         border-radius: var(--pp-radius);
+         padding: 12px 14px;
+         font-size: 0.83rem;
+         margin-bottom: 18px;
+         display: none;
+         gap: 8px;
+         align-items: flex-start;
+         line-height: 1.45;
+      }
+
+      .alert-box.show { display: flex; }
+
+      .alert-box.error {
+         background: rgba(252,129,129,0.1);
+         border: 1px solid rgba(252,129,129,0.3);
+         color: var(--pp-error);
+      }
+
+      .alert-box.success {
+         background: rgba(104,211,145,0.1);
+         border: 1px solid rgba(104,211,145,0.3);
+         color: var(--pp-success);
+      }
+
+      /* ---- Submit button ---- */
+      .btn-login {
+         width: 100%;
+         padding: 13px;
+         border: none;
+         border-radius: 50px;
+         cursor: pointer;
+         font-family: 'Outfit', sans-serif;
+         font-weight: 700;
+         font-size: 0.97rem;
+         letter-spacing: 0.5px;
+         background: #FFF4E6;
+         color: #5A3825;
+         transition: var(--pp-transition);
+         box-shadow: 0 6px 20px rgba(90,56,37,0.12);
+         margin-top: 6px;
+      }
+
+      .btn-login:hover:not(:disabled) {
+         transform: translateY(-2px);
+         box-shadow: 0 10px 28px rgba(90,56,37,0.18);
+      }
+
+      .btn-login:active:not(:disabled) { transform: translateY(0); }
+
+      .btn-login:disabled {
+         opacity: 0.65;
+         cursor: not-allowed;
+         transform: none;
+      }
+
+      .btn-spinner {
+         display: inline-block;
+         width: 15px;
+         height: 15px;
+         border: 2px solid rgba(255,255,255,0.45);
+         border-top-color: #ffffff;
+         border-radius: 50%;
+         animation: spin 0.7s linear infinite;
+         vertical-align: middle;
+         margin-right: 6px;
+      }
+
+      /* ---- Footer links ---- */
+      .login-footer {
+         text-align: center;
+         margin-top: 22px;
+         font-size: 0.8rem;
+         color: var(--pp-muted);
+      }
+
+      .link-btn {
+         background: none;
+         border: none;
+         color: #5A3825;
+         cursor: pointer;
+         font-size: 0.8rem;
+         font-family: 'Poppins', sans-serif;
+         padding: 0;
+         text-decoration: underline;
+         text-underline-offset: 3px;
+         transition: color 0.2s;
+      }
+
+      .link-btn:hover { color: #a3154f; }
+   </style>
+</head>
+<body>
+
+   <!-- Overlay de vérification de session -->
+   <div id="authOverlay">
+      <div class="pp-spinner"></div>
+      <div class="overlay-text">Vérification de la session…</div>
+   </div>
+
+   <!-- Formulaire de connexion -->
+   <div class="login-card" id="loginCard" style="display:none;">
+
+      <div class="login-logo">
+         <img class="login-logo-image" src="images/propatiss.png" alt="PROPATISS">
+         <div class="login-brand">PROPATISS</div>
+      </div>
+      <div class="login-divider"></div>
+      <p class="login-subtitle">Espace Administration — Connexion requise</p>
+
+      <div class="alert-box" id="alertBox" role="alert">
+         <span id="alertIcon"></span>
+         <span id="alertText"></span>
+      </div>
+
+      <form id="loginForm" novalidate autocomplete="on">
+
+         <div class="form-group">
+            <label class="form-label" for="loginEmail">Adresse e-mail</label>
+            <div class="form-field-wrapper">
+               <input
+                  type="email"
+                  id="loginEmail"
+                  class="form-input"
+                  placeholder="admin@propatiss.tn"
+                  required
+                  autocomplete="username"
+               >
+            </div>
+         </div>
+
+         <div class="form-group">
+            <label class="form-label" for="loginPassword">Mot de passe</label>
+            <div class="form-field-wrapper">
+               <input
+                  type="password"
+                  id="loginPassword"
+                  class="form-input"
+                  placeholder="••••••••"
+                  required
+                  autocomplete="current-password"
+               >
+               <button type="button" class="toggle-password" id="togglePwd" aria-label="Afficher/masquer le mot de passe">
+                  👁
+               </button>
+            </div>
+         </div>
+
+         <button type="submit" class="btn-login" id="btnLoginSubmit">Se connecter</button>
+
+      </form>
+
+      <div class="login-footer">
+         <button type="button" class="link-btn" id="forgotPasswordLink">Mot de passe oublié ?</button>
+      </div>
+
+   </div>
+
+   <!-- Firebase SDK -->
+   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+   <script src="js/firebase-config.js"></script>
+
+   <script>
+      (function () {
+         'use strict';
+
+         var overlay    = document.getElementById('authOverlay');
+         var loginCard  = document.getElementById('loginCard');
+         var form       = document.getElementById('loginForm');
+         var emailInput = document.getElementById('loginEmail');
+         var pwdInput   = document.getElementById('loginPassword');
+         var submitBtn  = document.getElementById('btnLoginSubmit');
+         var alertBox   = document.getElementById('alertBox');
+         var alertText  = document.getElementById('alertText');
+         var alertIcon  = document.getElementById('alertIcon');
+         var togglePwd  = document.getElementById('togglePwd');
+         var forgotLink = document.getElementById('forgotPasswordLink');
+
+         /* Afficher le formulaire directement (fallback) */
+         function showLoginForm() {
+            if (overlay) overlay.style.display = 'none';
+            if (loginCard) loginCard.style.display = 'block';
+            if (emailInput) emailInput.focus();
+         }
+
+         /* Timeout de sécurité : si Firebase ne répond pas en 4s → afficher le formulaire */
+         var authTimer = setTimeout(showLoginForm, 4000);
+
+         /* Vérification de session au chargement */
+         try {
+            firebase.auth().onAuthStateChanged(function (user) {
+               clearTimeout(authTimer);
+               if (user) {
+                  window.location.replace('admin.html');
+               } else {
+                  showLoginForm();
+               }
+            });
+         } catch (e) {
+            clearTimeout(authTimer);
+            showLoginForm();
+         }
+
+         function showAlert(message, type) {
+            alertBox.className = 'alert-box ' + type + ' show';
+            alertIcon.textContent = type === 'error' ? '⚠️' : '✅';
+            alertText.textContent = message;
+         }
+
+         function hideAlert() {
+            alertBox.className = 'alert-box';
+         }
+
+         function getFirebaseErrorMessage(code) {
+            var messages = {
+               'auth/invalid-email'          : 'Adresse e-mail invalide.',
+               'auth/user-not-found'         : 'E-mail ou mot de passe incorrect.',
+               'auth/wrong-password'         : 'E-mail ou mot de passe incorrect.',
+               'auth/invalid-credential'     : 'E-mail ou mot de passe incorrect.',
+               'auth/too-many-requests'      : 'Trop de tentatives. Réessayez dans quelques minutes.',
+               'auth/network-request-failed' : 'Problème de connexion internet. Vérifiez votre réseau.',
+               'auth/user-disabled'          : 'Ce compte a été désactivé. Contactez l\'administrateur.'
+            };
+            return messages[code] || 'Connexion impossible. Réessayez ultérieurement.';
+         }
+
+         /* Toggle affichage mot de passe */
+         togglePwd.addEventListener('click', function () {
+            var isPwd = pwdInput.type === 'password';
+            pwdInput.type         = isPwd ? 'text' : 'password';
+            togglePwd.textContent = isPwd ? '🙈' : '👁';
+         });
+
+         /* Soumission du formulaire */
+         form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            hideAlert();
+
+            var email    = emailInput.value.trim();
+            var password = pwdInput.value;
+
+            if (!email || !password) {
+               showAlert('Veuillez remplir tous les champs.', 'error');
+               return;
+            }
+
+            submitBtn.disabled  = true;
+            submitBtn.innerHTML = '<span class="btn-spinner"></span> Connexion en cours…';
+
+            firebase.auth().signInWithEmailAndPassword(email, password)
+               .then(function () {
+                  window.location.replace('admin.html');
+               })
+               .catch(function (err) {
+                  showAlert(getFirebaseErrorMessage(err.code), 'error');
+                  submitBtn.disabled  = false;
+                  submitBtn.innerHTML = 'Se connecter';
+                  pwdInput.value = '';
+                  pwdInput.focus();
+               });
+         });
+
+         /* Réinitialisation du mot de passe */
+         forgotLink.addEventListener('click', function () {
+            var email = emailInput.value.trim();
+
+            if (!email) {
+               showAlert('Entrez votre adresse e-mail ci-dessus, puis cliquez à nouveau.', 'error');
+               emailInput.focus();
+               return;
+            }
+
+            firebase.auth().sendPasswordResetEmail(email)
+               .then(function () {
+                  showAlert('Si ce compte existe, un e-mail de réinitialisation a été envoyé.', 'success');
+               })
+               .catch(function (err) {
+                  showAlert(getFirebaseErrorMessage(err.code), 'error');
+               });
+         });
+
+         /* Effacer les alertes quand l'utilisateur retape */
+         emailInput.addEventListener('input', hideAlert);
+         pwdInput.addEventListener('input', hideAlert);
+
+      })();
+   </script>
+
+</body>
+</html>
